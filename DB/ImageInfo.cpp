@@ -405,6 +405,12 @@ void ImageInfo::setMD5Sum( const MD5& sum, bool storeEXIF )
         // FIXME (ZaJ): it *should* make sense to set the ImageDB::md5Map() from here, but I want
         //              to make sure I fully understand everything first...
         //              this could also be done as signal md5Changed(old,new)
+        // Note: I've now figured out why this isn't done:
+        //       for the imagesWithMD5SumChanged() function, setMD5Sum is called when a
+        //       changed MD5 sum is detected, but the (global) md5 map is not updated, so
+        //       that the difference can be calculated afterwards.
+        //       OTOH, this leads to a difference between imageInfos and md5 map. I think that's not obvious to the user
+        //       and can probably done differently.
 
         // image size is invalidated by the thumbnail builder, if needed
 

@@ -692,6 +692,8 @@ bool  NewImageFinder::calculateMD5sums(
     DB::FileNameList cantRead;
     bool dirty = false;
 
+    QElapsedTimer timer;
+    timer.start();
     for (const FileName& fileName : list) {
         if ( count % 10 == 0 ) {
             dialog.setValue( count ); // ensure to call setProgress(0)
@@ -700,6 +702,7 @@ bool  NewImageFinder::calculateMD5sums(
             if ( dialog.wasCanceled() ) {
                 if ( wasCanceled )
                     *wasCanceled = true;
+                qCDebug(TimingLog) << "Cancelled MD5 sum calculation after" << count << "images in " << timer.elapsed() / 1000.0 << " seconds";
                 return dirty;
             }
         }
@@ -707,11 +710,15 @@ bool  NewImageFinder::calculateMD5sums(
         MD5 md5 = MD5Sum( fileName );
         if (md5.isNull()) {
             cantRead << fileName;
+            qCInfo(DBLog) << "File" << fileName.relative() << "not found for MD5 sum calculation.";
             continue;
         }
 
         ImageInfoPtr info = ImageDB::instance()->info(fileName);
         if  ( info->MD5Sum() != md5 ) {
+            qCWarning(DBLog) << "MD5 sum of file" << fileName.relative()
+                             << "changed from" << info->MD5Sum().toHexString()
+                             << "to" << md5.toHexString();
             info->setMD5Sum( md5 );
             dirty = true;
             ImageManager::ThumbnailCache::instance()->removeThumbnail(fileName);
@@ -721,11 +728,12 @@ bool  NewImageFinder::calculateMD5sums(
 
         ++count;
     }
+    qCDebug(TimingLog) << "Calculated MD5 sum of" << count << "images in " << timer.elapsed() / 1000.0 << " seconds";
     if ( wasCanceled )
         *wasCanceled = false;
 
     if ( !cantRead.empty() )
-        KMessageBox::informationList( nullptr, i18n("Following files could not be read:"), cantRead.toStringList(DB::RelativeToImageRoot) );
+        KMessageBox::informationList( nullptr, i18n("The following files could not be read:"), cantRead.toStringList(DB::RelativeToImageRoot) );
 
     return dirty;
 }

@@ -868,10 +868,8 @@ void MainWindow::Window::setupMenuBar()
     a = actionCollection()->addAction( QString::fromLatin1("findImagesWithInvalidDate"), this, SLOT(slotShowImagesWithInvalidDate()) );
     a->setText( i18n("Display Images and Videos with Incomplete Dates...") );
 
-#ifdef DOES_STILL_NOT_WORK_IN_KPA4
     a = actionCollection()->addAction( QString::fromLatin1("findImagesWithChangedMD5Sum"), this, SLOT(slotShowImagesWithChangedMD5Sum()) );
     a->setText( i18n("Display Images and Videos with Changed MD5 Sum") );
-#endif //DOES_STILL_NOT_WORK_IN_KPA4
 
     a = actionCollection()->addAction( QLatin1String("mergeDuplicates"), this, SLOT(mergeDuplicates()));
     a->setText(i18n("Merge duplicates"));
@@ -1391,13 +1389,9 @@ void MainWindow::Window::slotShowNotOnDisk()
 
 void MainWindow::Window::slotShowImagesWithChangedMD5Sum()
 {
-#ifdef DOES_STILL_NOT_WORK_IN_KPA4
     Utilities::ShowBusyCursor dummy;
-    StringSet changed = DB::ImageDB::instance()->imagesWithMD5Changed();
+    DB::FileNameSet changed = DB::ImageDB::instance()->imagesWithMD5Changed();
     showThumbNails( changed.toList() );
-#else // DOES_STILL_NOT_WORK_IN_KPA4
-    qFatal("Code commented out in MainWindow::Window::slotShowImagesWithChangedMD5Sum");
-#endif // DOES_STILL_NOT_WORK_IN_KPA4
 }
 
 
