@@ -291,7 +291,6 @@ void XMLDB::FileReader::loadImages( ReaderPtr reader )
         reader->complainStartElementExpected(imagesString);
 
     int repair_numDuplicateInfos = 0;
-    QStringList repair_unfixableInfos;
     while (reader->readNextStartOrStopElement(imageString).isStartToken) {
         const QString fileNameStr = reader->attribute(fileString);
         if ( fileNameStr.isNull() ) {
@@ -325,7 +324,6 @@ void XMLDB::FileReader::loadImages( ReaderPtr reader )
                     , i18n("Results for automatic repair")
                     );
     }
-
 }
 
 void XMLDB::FileReader::loadBlockList( ReaderPtr reader )
