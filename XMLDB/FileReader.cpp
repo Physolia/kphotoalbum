@@ -55,9 +55,9 @@ namespace {
  *
  * @param existingInfo
  * @param newInfo
- * @return \c true, if the MD5 sums of both entries match, \c false otherwise.
+ * @return \c true, if the items could be merged, \c false otherwise.
  */
-bool mergeInfos(DB::ImageInfoPtr existingInfo, DB::ImageInfoPtr newInfo)
+void mergeInfos(DB::ImageInfoPtr existingInfo, DB::ImageInfoPtr newInfo)
 {
     bool hashIsDifferent = (existingInfo->MD5Sum() == newInfo->MD5Sum());
     DB::MD5 preferredHash = newInfo->MD5Sum();
@@ -68,11 +68,9 @@ bool mergeInfos(DB::ImageInfoPtr existingInfo, DB::ImageInfoPtr newInfo)
         qCWarning(XMLDBLog).nospace() << "Conflicting information for file " << newInfo->fileName().relative()
                                        << ": duplicate entry with different MD5 sum! Using MD5 sum of newer entry...";
         existingInfo->setMD5Sum(preferredHash, false);
-        return false;
     }
-    return true;
 }
-}
+} // namespace
 
 void XMLDB::FileReader::read( const QString& configFile )
 {
@@ -292,8 +290,6 @@ void XMLDB::FileReader::loadImages( ReaderPtr reader )
     if (!info.isStartToken)
         reader->complainStartElementExpected(imagesString);
 
-    bool repair_showDialog = true;
-    bool repair_ignoreDuplicateInfos = false;
     int repair_numDuplicateInfos = 0;
     QStringList repair_unfixableInfos;
     while (reader->readNextStartOrStopElement(imageString).isStartToken) {
@@ -307,42 +303,11 @@ void XMLDB::FileReader::loadImages( ReaderPtr reader )
 
         DB::ImageInfoPtr info = load( dbFileName, reader );
 
-        if (repair_showDialog && m_db->md5Map()->containsFile(dbFileName) )
-        {
-            // until KPhotoAlbum 5.4, duplicate entries were not checked for,
-            // which is essentially the same as the "ignore" option.
-            // As far as I(jzarl) can tell, ignoring this problem is mostly "benign",
-            // but can cause:
-            // (1) inconsistencies when searching for tags
-            //     E.g.. a search for tag A shows image B even though the tag has been removed from (one duplicate of) the image
-            // (2) more duplicates (not sure about that one)
-            KMessageBox::ButtonCode choice = KMessageBox::warningYesNoCancel(
-                        messageParent()
-                        , i18n("<p>Line %1, column %2: Duplicate entry for file %3!</p>"
-                               "<p>Attempt automatic repair?</p>"
-                               "<ul>"
-                               "<li>Click <interface>Yes</interface> to automatically merge all duplicate entries…</li>"
-                               "<li>Click <interface>No</interface> to ignore problems and to keep duplicates.</li>"
-                               "<li>Click <interface>Cancel</interface> to exit immediately.</li>"
-                               "</ul>"
-                               , reader->lineNumber(), reader->columnNumber()
-                               , dbFileName.relative()
-                               )
-                        , i18n("Error in database file")
-                        );
-            if ( choice == KMessageBox::No )
-                repair_ignoreDuplicateInfos = true;
-            else if ( choice == KMessageBox::Cancel )
-                exit(-1);
-            // only ask once
-            repair_showDialog = false;
-        }
-        if ( !repair_ignoreDuplicateInfos && m_db->md5Map()->containsFile(dbFileName) )
+        if ( m_db->md5Map()->containsFile(dbFileName) )
         {
             DB::ImageInfoPtr existingInfo = m_db->info(dbFileName);
             repair_numDuplicateInfos++;
-            if (!mergeInfos(existingInfo, info))
-                repair_unfixableInfos.append(dbFileName.relative());
+            mergeInfos(existingInfo, info);
         }
         else
         {
@@ -352,34 +317,13 @@ void XMLDB::FileReader::loadImages( ReaderPtr reader )
     }
     if (repair_numDuplicateInfos>0)
     {
-        if (repair_unfixableInfos.isEmpty())
-        {
-            KMessageBox::information(
-                        messageParent()
-                        , i18np("<p>One duplicate image entry was fixed.</p>"
-                                , "<p>%1 duplicate image entries were fixed.</p>"
-                                , repair_numDuplicateInfos)
-                        , i18n("Results for automatic repair")
-                        );
-        } else {
-            const int numUnfixable = repair_unfixableInfos.size();
-            repair_unfixableInfos.removeDuplicates();
-            KMessageBox::informationList(
-                        messageParent()
-                        , i18ncp(
-                            "Note that the image list (repair_unfixableInfos) can contain the same file name multiple times."
-                            "Therefore, duplicates are removed and the optional plural 'file(s)' is used."
-                            ,"<p>One image entry out of %2 could not be automatically fixed.</p>"
-                             "<p>Maybe the file is not currently available on disk?</p>"
-                             "<p>The following file is affected:</p>"
-                            , "<p>%1 image entries out of %2 could not be automatically fixed.<p>"
-                              "</p>Maybe the files are not currently available on disk?</p>"
-                              "<p>The following file(s) are affected:</p>"
-                            , numUnfixable, repair_numDuplicateInfos)
-                        , repair_unfixableInfos
-                        , i18n("Results for automatic repair")
-                        );
-        }
+        KMessageBox::information(
+                    messageParent()
+                    , i18np("<p>One duplicate image entry was automatically merged.</p>"
+                            , "<p>%1 duplicate image entries were automatically merged.</p>"
+                            , repair_numDuplicateInfos)
+                    , i18n("Results for automatic repair")
+                    );
     }
 
 }
