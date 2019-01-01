@@ -32,6 +32,11 @@ public:
     explicit TokenEditor( QWidget* parent );
     virtual void show();
     static QStringList tokensInUse();
+    /**
+     * @brief unusedToken
+     * @return a token that is not in use, or an empty QString if all tokens are used.
+     */
+    static QString unusedToken();
 
 protected slots:
     void selectAll();

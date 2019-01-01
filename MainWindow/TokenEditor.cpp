@@ -123,6 +123,18 @@ QStringList TokenEditor::tokensInUse()
     return res;
 }
 
+QString TokenEditor::unusedToken()
+{
+    QSet<QString> usedTokens = tokensInUse().toSet();
+    for ( int ch = 'A'; ch <= 'Z'; ++ch ) {
+        const QString token = QChar::fromLatin1( (char) ch );
+        if (!usedTokens.contains(token)) {
+            return token;
+        }
+    }
+    return {};
+}
+
 void TokenEditor::accept()
 {
     DB::CategoryPtr tokensCategory = DB::ImageDB::instance()->categoryCollection()->categoryForSpecial(DB::Category::TokensCategory);

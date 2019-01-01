@@ -137,17 +137,10 @@ void ExtractOneVideoFrame::deleteWorkingDirectory()
 
 void ExtractOneVideoFrame::markShortVideo(const DB::FileName &fileName)
 {
-    if (s_tokenForShortVideos.isNull()) {
-        Utilities::StringSet usedTokens = MainWindow::TokenEditor::tokensInUse().toSet();
-        for ( int ch = 'A'; ch <= 'Z'; ++ch ) {
-            QString token = QChar::fromLatin1( (char) ch );
-            if (!usedTokens.contains(token)) {
-                s_tokenForShortVideos = token;
-                break;
-            }
-        }
+    if (s_tokenForShortVideos.isEmpty()) {
+        s_tokenForShortVideos = MainWindow::TokenEditor::unusedToken();
 
-        if (s_tokenForShortVideos.isNull()) {
+        if (s_tokenForShortVideos.isEmpty()) {
             // Hmmm, no free token. OK lets just skip setting tokens.
             return;
         }
