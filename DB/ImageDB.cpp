@@ -26,6 +26,7 @@
 #include <DB/MediaCount.h>
 #include <QProgressDialog>
 #include <DB/FileName.h>
+#include "Logging.h"
 
 using namespace DB;
 
@@ -34,7 +35,10 @@ ImageDB* ImageDB::s_instance = nullptr;
 ImageDB* DB::ImageDB::instance()
 {
     if ( s_instance == nullptr )
+    {
+        qCWarning(DBLog) << "ImageDB is null.";
         exit(0); // Either we are closing down or ImageDB::instance was called before ImageDB::setup
+    }
     return s_instance;
 }
 
