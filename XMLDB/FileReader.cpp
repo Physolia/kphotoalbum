@@ -42,23 +42,35 @@
 
 namespace {
 /**
- * @brief mergeInfos tries to merge two ImageInfos
+ * @brief mergeInfos merges two duplicate ImageInfos.
+ * If the MD5 sum differs, the "newer" one is used.
+ * All other properties are merged.
+ *
+ * Until KPhotoAlbum 5.4, duplicate entries were not checked for.
+ * As far as I(jzarl) can tell, ignoring this problem is mostly "benign",
+ * but can cause:
+ * 1. inconsistencies when searching for tags
+ *    E.g.. a search for tag A shows image B even though the tag has been removed from (one duplicate of) the image
+ * 2. more duplicates (not sure about that one)
+ *
  * @param existingInfo
  * @param newInfo
- * @return \c true, if the items could be merged, \c false otherwise.
+ * @return \c true, if the MD5 sums of both entries match, \c false otherwise.
  */
 bool mergeInfos(DB::ImageInfoPtr existingInfo, DB::ImageInfoPtr newInfo)
 {
-    if (existingInfo->MD5Sum() == newInfo->MD5Sum())
+    bool hashIsDifferent = (existingInfo->MD5Sum() == newInfo->MD5Sum());
+    DB::MD5 preferredHash = newInfo->MD5Sum();
+    qCWarning(XMLDBLog) << "Merging duplicate entry for file" << newInfo->fileName().relative();
+    existingInfo->merge(*newInfo);
+    if (hashIsDifferent)
     {
-        qCWarning(XMLDBLog) << "Merging duplicate entry for file" << newInfo->fileName().relative();
-        existingInfo->merge(*newInfo);
-        return true;
-    } else {
-        qCCritical(XMLDBLog).nospace() << "Conflicting information for file " << newInfo->fileName().relative()
-                                       << ": duplicate entry with different MD5 sum! Bailing out...";
+        qCWarning(XMLDBLog).nospace() << "Conflicting information for file " << newInfo->fileName().relative()
+                                       << ": duplicate entry with different MD5 sum! Using MD5 sum of newer entry...";
+        existingInfo->setMD5Sum(preferredHash, false);
         return false;
     }
+    return true;
 }
 }
 
