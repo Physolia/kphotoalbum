@@ -34,6 +34,7 @@
 #include "FileWriter.h"
 #include "Exif/Database.h"
 #include <DB/FileName.h>
+#include "Logging.h"
 
 using Utilities::StringSet;
 
@@ -45,6 +46,40 @@ XMLDB::Database::Database( const QString& configFile ):
     FileReader reader( this );
     reader.read( configFile );
     m_nextStackId = reader.nextStackId();
+
+    // sort out duplicate image entries in index.xml
+    // Until KPhotoAlbum 5.4, duplicate entries were not checked for.
+    // As far as I(jzarl) can tell, ignoring this problem is mostly "benign",
+    // but can cause:
+    // 1. inconsistencies when searching for tags
+    //    E.g.. a search for tag A shows image B even though the tag has been removed from (one duplicate of) the image
+    // 2. more duplicates (not sure about that one)
+    if (!reader.duplicates().isEmpty())
+    {
+        qCWarning(XMLDBLog) << "Database inconsistent: " << reader.duplicates().size() << "duplicate image entries!";
+        for (const auto &dupInfo : reader.duplicates())
+        {
+            DB::ImageInfoPtr existingInfo = dupInfo.first;
+            DB::ImageInfoPtr newInfo = dupInfo.duplicate;
+            bool hashIsDifferent = (existingInfo->MD5Sum() == newInfo->MD5Sum());
+            DB::MD5 preferredHash = newInfo->MD5Sum();
+            qCWarning(XMLDBLog) << "Merging duplicate entry for file" << newInfo->fileName().relative();
+            mergeImageInfos(existingInfo,newInfo);
+            if (hashIsDifferent)
+            {
+                qCWarning(XMLDBLog).nospace() << "Conflicting information for file " << newInfo->fileName().relative()
+                                              << ": duplicate entry with different MD5 sum! Using MD5 sum of newer entry...";
+                existingInfo->setMD5Sum(preferredHash, false);
+            }
+        }
+        KMessageBox::information(
+                    0
+                    , i18np("<p>One duplicate image entry was automatically merged.</p>"
+                            , "<p>%1 duplicate image entries were automatically merged.</p>"
+                            , reader.duplicates().size())
+                    , i18n("Results for automatic repair")
+                    );
+    }
 
     connect( categoryCollection(), SIGNAL(itemRemoved(DB::Category*,QString)),
              this, SLOT(deleteItem(DB::Category*,QString)) );
@@ -131,7 +166,7 @@ void XMLDB::Database::addToBlockList(const DB::FileNameList& list)
 void XMLDB::Database::deleteList(const DB::FileNameList& list)
 {
     Q_FOREACH(const DB::FileName& fileName, list) {
-        DB::ImageInfoPtr inf = fileName.info();
+        DB::ImageInfoPtr inf = info(fileName);
         StackMap::iterator found = m_stackMap.find(inf->stackId());
         if ( inf->isStacked() && found != m_stackMap.end() ) {
             const DB::FileNameList origCache = found.value();
@@ -143,7 +178,7 @@ void XMLDB::Database::deleteList(const DB::FileNameList& list)
             if (newCache.size() <= 1) {
                 // we're destroying a stack
                 Q_FOREACH(const DB::FileName& cacheName, newCache) {
-                    DB::ImageInfoPtr cacheInf = cacheName.info();
+                    DB::ImageInfoPtr cacheInf = info(cacheName);
                     cacheInf->setStackId(0);
                     cacheInf->setStackOrder(0);
                 }
@@ -361,7 +396,7 @@ void XMLDB::Database::sortAndMergeBackIn(const DB::FileNameList& fileNameList)
 {
     DB::ImageInfoList infoList;
     Q_FOREACH( const DB::FileName &fileName, fileNameList )
-        infoList.append(fileName.info());
+        infoList.append(info(fileName));
     m_images.sortAndMergeBackIn(infoList);
 }
 
@@ -456,7 +491,7 @@ bool XMLDB::Database::stack(const DB::FileNameList& items)
     unsigned int stackOrder = 1;
 
     Q_FOREACH(const DB::FileName& fileName, items) {
-        DB::ImageInfoPtr imgInfo = fileName.info();
+        DB::ImageInfoPtr imgInfo = info(fileName);
         Q_ASSERT( imgInfo );
         if ( imgInfo->isStacked() ) {
             stacks << imgInfo->stackId();
@@ -491,7 +526,7 @@ void XMLDB::Database::unstack(const DB::FileNameList& items)
         if (allInStack.size() <= 2) {
             // we're destroying stack here
             Q_FOREACH(const DB::FileName& stackFileName, allInStack) {
-                DB::ImageInfoPtr imgInfo = stackFileName.info();
+                DB::ImageInfoPtr imgInfo = info(stackFileName);
                 Q_ASSERT( imgInfo );
                 if ( imgInfo->isStacked() ) {
                     m_stackMap.remove( imgInfo->stackId() );
@@ -500,7 +535,7 @@ void XMLDB::Database::unstack(const DB::FileNameList& items)
                 }
             }
         } else {
-            DB::ImageInfoPtr imgInfo = fileName.info();
+            DB::ImageInfoPtr imgInfo = info(fileName);
             Q_ASSERT( imgInfo );
             if ( imgInfo->isStacked() ) {
                 m_stackMap[imgInfo->stackId()].removeAll(fileName);
@@ -543,7 +578,77 @@ DB::FileNameList XMLDB::Database::getStackFor(const DB::FileName& referenceImg) 
 
 void XMLDB::Database::copyData(const DB::FileName &from, const DB::FileName &to)
 {
-    (*info(to)).merge(*info(from));
+    mergeImageInfos(info(to), info(from));
+}
+
+void XMLDB::Database::mergeImageInfos(DB::ImageInfoPtr toInfo, const DB::ImageInfoPtr fromInfo)
+{
+    // Merge date
+    if ( fromInfo->date() != toInfo->m_date)
+    {
+        // a fuzzy date has been set by the user and therefore "wins" over an exact date.
+        // two fuzzy dates can be merged
+        // two exact dates should ideally be cross-checked with Exif information in the file.
+        // Nevertheless, we merge them into a fuzzy date to avoid the complexity of checking the file.
+        if (fromInfo->date().isFuzzy())
+        {
+            if (toInfo->m_date.isFuzzy())
+                toInfo->m_date.extendTo(fromInfo->date());
+            else
+                toInfo->m_date = fromInfo->date();
+        }
+        else if (!toInfo->m_date.isFuzzy())
+        {
+            toInfo->m_date.extendTo(fromInfo->date());
+        }
+        // else: keep m_date
+    }
+
+    // Merge description
+    if ( !fromInfo->description().isEmpty() ) {
+        if ( toInfo->m_description.isEmpty() )
+            toInfo->m_description = fromInfo->description();
+        else if (toInfo->m_description != fromInfo->description())
+            toInfo->m_description += QString::fromUtf8("\n-----------\n") + fromInfo->m_description;
+    }
+
+    // Clear untagged tag if only one of the images was untagged
+    const QString untaggedCategory = Settings::SettingsData::instance()->untaggedCategory();
+    const QString untaggedTag = Settings::SettingsData::instance()->untaggedTag();
+    const bool isCompleted = !toInfo->m_categoryInfomation[untaggedCategory].contains(untaggedTag) || !fromInfo->m_categoryInfomation[untaggedCategory].contains(untaggedTag);
+
+    // Merge tags
+    QSet<QString> keys = QSet<QString>::fromList(toInfo->m_categoryInfomation.keys());
+    keys.unite(QSet<QString>::fromList(fromInfo->m_categoryInfomation.keys()));
+    for( const QString& key : keys) {
+        toInfo->m_categoryInfomation[key].unite(fromInfo->m_categoryInfomation[key]);
+    }
+
+    // Clear untagged tag if only one of the images was untagged
+    if (isCompleted)
+        toInfo->m_categoryInfomation[untaggedCategory].remove(untaggedTag);
+
+    // merge stacks:
+    if (toInfo->isStacked() || fromInfo->isStacked())
+    {
+        if (toInfo->stackId() != fromInfo->stackId())
+        {
+            DB::FileNameList stackImages;
+            if (!toInfo->isStacked())
+                stackImages.append(toInfo->fileName());
+            else
+                stackImages.append(getStackFor(toInfo->fileName()));
+            stackImages.append(getStackFor(fromInfo->fileName()));
+
+            unstack(stackImages);
+            if (!stack(stackImages))
+                qCWarning(XMLDBLog, "Could not merge stacks!");
+        }
+        else
+        {
+            qCInfo(XMLDBLog, "Stack id identical on merge.");
+        }
+    }
 }
 
 int XMLDB::Database::fileVersion()

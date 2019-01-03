@@ -168,11 +168,6 @@ public:
 
     void copyExtraData( const ImageInfo& from, bool copyAngle = true);
     void removeExtraData();
-    /**
-     * Merge another ImageInfo into this one.
-     * The other ImageInfo is not altered in any way or removed.
-     */
-    void merge(const ImageInfo& other);
 
     QMap<QString, QMap<QString, QRect>> taggedAreas() const;
     /**

@@ -40,37 +40,6 @@
 #include <QTextCodec>
 #include <QTextStream>
 
-namespace {
-/**
- * @brief mergeInfos merges two duplicate ImageInfos.
- * If the MD5 sum differs, the "newer" one is used.
- * All other properties are merged.
- *
- * Until KPhotoAlbum 5.4, duplicate entries were not checked for.
- * As far as I(jzarl) can tell, ignoring this problem is mostly "benign",
- * but can cause:
- * 1. inconsistencies when searching for tags
- *    E.g.. a search for tag A shows image B even though the tag has been removed from (one duplicate of) the image
- * 2. more duplicates (not sure about that one)
- *
- * @param existingInfo
- * @param newInfo
- * @return \c true, if the items could be merged, \c false otherwise.
- */
-void mergeInfos(DB::ImageInfoPtr existingInfo, DB::ImageInfoPtr newInfo)
-{
-    bool hashIsDifferent = (existingInfo->MD5Sum() == newInfo->MD5Sum());
-    DB::MD5 preferredHash = newInfo->MD5Sum();
-    qCWarning(XMLDBLog) << "Merging duplicate entry for file" << newInfo->fileName().relative();
-    existingInfo->merge(*newInfo);
-    if (hashIsDifferent)
-    {
-        qCWarning(XMLDBLog).nospace() << "Conflicting information for file " << newInfo->fileName().relative()
-                                       << ": duplicate entry with different MD5 sum! Using MD5 sum of newer entry...";
-        existingInfo->setMD5Sum(preferredHash, false);
-    }
-}
-} // namespace
 
 void XMLDB::FileReader::read( const QString& configFile )
 {
@@ -290,7 +259,6 @@ void XMLDB::FileReader::loadImages( ReaderPtr reader )
     if (!info.isStartToken)
         reader->complainStartElementExpected(imagesString);
 
-    int repair_numDuplicateInfos = 0;
     while (reader->readNextStartOrStopElement(imageString).isStartToken) {
         const QString fileNameStr = reader->attribute(fileString);
         if ( fileNameStr.isNull() ) {
@@ -305,24 +273,17 @@ void XMLDB::FileReader::loadImages( ReaderPtr reader )
         if ( m_db->md5Map()->containsFile(dbFileName) )
         {
             DB::ImageInfoPtr existingInfo = m_db->info(dbFileName);
-            repair_numDuplicateInfos++;
-            mergeInfos(existingInfo, info);
+            // store duplicate for later
+            // at this point, the database is not fully initialized and if the info
+            // is part of a stack it is possible that not all images of the stack are
+            // known at this point.
+            m_duplicateList.append(DuplicateInfo{existingInfo,info});
         }
         else
         {
             m_db->m_images.append(info);
             m_db->m_md5map.insert( info->MD5Sum(), dbFileName );
         }
-    }
-    if (repair_numDuplicateInfos>0)
-    {
-        KMessageBox::information(
-                    messageParent()
-                    , i18np("<p>One duplicate image entry was automatically merged.</p>"
-                            , "<p>%1 duplicate image entries were automatically merged.</p>"
-                            , repair_numDuplicateInfos)
-                    , i18n("Results for automatic repair")
-                    );
     }
 }
 

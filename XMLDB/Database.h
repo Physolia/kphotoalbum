@@ -78,6 +78,23 @@ namespace XMLDB {
         DB::FileNameList getStackFor(const DB::FileName& referenceId) const override;
         void copyData( const DB::FileName& from, const DB::FileName& to) override;
 
+        /**
+         * @brief mergeImageInfos merges two ImageInfos.
+         * This is how information is merged:
+         *  - fuzzy dates are extended, precise dates become date ranges
+         *    (if only one date is fuzzy, the fuzzy date prevails)
+         *  - descriptions are merged
+         *  - the label of the \c toInfo is retained
+         *  - tags are merged
+         *    (if only one image is marked as untagged, the untagged tag is removed)
+         *  - stacks are merged
+         *  - the MD5 of the \c toInfo is retained
+         *
+         * @param toInfo
+         * @param fromInfo
+         */
+        void mergeImageInfos( DB::ImageInfoPtr toInfo, DB::ImageInfoPtr const fromInfo);
+
         static int fileVersion();
     protected:
         DB::FileNameList searchPrivate(

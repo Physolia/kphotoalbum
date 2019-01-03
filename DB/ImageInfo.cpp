@@ -640,68 +640,6 @@ void DB::ImageInfo::removeExtraData ()
     m_rating = -1;
 }
 
-void ImageInfo::merge(const ImageInfo &other)
-{
-    // Merge date
-    if ( other.date() != m_date)
-    {
-        // a fuzzy date has been set by the user and therefore "wins" over an exact date.
-        // two fuzzy dates can be merged
-        // two exact dates should ideally be cross-checked with Exif information in the file.
-        // Nevertheless, we merge them into a fuzzy date to avoid the complexity of checking the file.
-        if (other.date().isFuzzy())
-        {
-            if (m_date.isFuzzy())
-                m_date.extendTo(other.date());
-            else
-                m_date = other.date();
-        }
-        else if (!m_date.isFuzzy())
-        {
-            m_date.extendTo(other.date());
-        }
-        // else: keep m_date
-    }
-
-    // Merge description
-    if ( !other.description().isEmpty() ) {
-        if ( m_description.isEmpty() )
-            m_description = other.description();
-        else if (m_description != other.description())
-            m_description += QString::fromUtf8("\n-----------\n") + other.m_description;
-    }
-
-    // Clear untagged tag if only one of the images was untagged
-    const QString untaggedCategory = Settings::SettingsData::instance()->untaggedCategory();
-    const QString untaggedTag = Settings::SettingsData::instance()->untaggedTag();
-    const bool isCompleted = !m_categoryInfomation[untaggedCategory].contains(untaggedTag) || !other.m_categoryInfomation[untaggedCategory].contains(untaggedTag);
-
-    // Merge tags
-    QSet<QString> keys = QSet<QString>::fromList(m_categoryInfomation.keys());
-    keys.unite(QSet<QString>::fromList(other.m_categoryInfomation.keys()));
-    for( const QString& key : keys) {
-        m_categoryInfomation[key].unite(other.m_categoryInfomation[key]);
-    }
-
-    // Clear untagged tag if only one of the images was untagged
-    if (isCompleted)
-        m_categoryInfomation[untaggedCategory].remove(untaggedTag);
-
-    // merge stacks:
-    if (isStacked() || other.isStacked())
-    {
-        DB::FileNameList stackImages;
-        if (!isStacked())
-            stackImages.append(fileName());
-        else
-            stackImages.append(DB::ImageDB::instance()->getStackFor(fileName()));
-        stackImages.append(DB::ImageDB::instance()->getStackFor(other.fileName()));
-
-        DB::ImageDB::instance()->unstack(stackImages);
-        if (!DB::ImageDB::instance()->stack(stackImages))
-            qCWarning(DBLog, "Could not merge stacks!");
-    }
-}
 
 void DB::ImageInfo::addCategoryInfo( const QString& category, const StringSet& values )
 {

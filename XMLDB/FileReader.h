@@ -40,6 +40,11 @@ public:
     static QString unescape( const QString& );
     DB::StackID nextStackId() const { return m_nextStackId; };
 
+    struct DuplicateInfo {
+        DB::ImageInfoPtr first;
+        DB::ImageInfoPtr duplicate;
+    };
+    QList<DuplicateInfo> duplicates() const { return m_duplicateList; }
 protected:
     void loadCategories( ReaderPtr reader );
     void loadImages( ReaderPtr reader );
@@ -62,6 +67,7 @@ private:
     Database* const m_db;
     int m_fileVersion;
     DB::StackID m_nextStackId;
+    QList<DuplicateInfo> m_duplicateList;
 
     // During profilation I found that it was rather expensive to look this up over and over again (once for each image)
     DB::CategoryPtr m_folderCategory;
