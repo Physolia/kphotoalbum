@@ -7,12 +7,12 @@
 #define MAINWINDOW_WINDOW_H
 #include <DB/Category.h>
 #include <DB/ImageSearchInfo.h>
+#include <MainWindow/CopyLinkEngine.h>
 #include <ThumbnailView/enums.h>
 #include <kpabase/FileNameList.h>
 #include <kpabase/UIDelegate.h>
 #include <kpabase/config-kpa-marble.h>
 #include <kpabase/config-kpa-plugins.h>
-#include <MainWindow/CopyLinkEngine.h>
 
 #include <KXmlGuiWindow>
 #include <QList>
@@ -290,7 +290,6 @@ private:
 #endif
     ThumbnailView::FilterWidget *m_filterWidget;
     CopyLinkEngine *m_copyLinkEngine;
-
 };
 
 }

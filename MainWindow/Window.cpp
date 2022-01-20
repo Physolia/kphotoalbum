@@ -882,7 +882,7 @@ void MainWindow::Window::setupMenuBar()
 #ifdef DOES_STILL_NOT_WORK_IN_KPA4
     a = actionCollection()->addAction(QString::fromLatin1("findImagesWithChangedMD5Sum"), this, SLOT(slotShowImagesWithChangedMD5Sum()));
     a->setText(i18n("Display Images and Videos with Changed MD5 Sum"));
-#endif //DOES_STILL_NOT_WORK_IN_KPA4
+#endif // DOES_STILL_NOT_WORK_IN_KPA4
 
     a = actionCollection()->addAction(QLatin1String("mergeDuplicates"), this, &Window::mergeDuplicates);
     a->setText(i18n("Merge duplicates"));
@@ -1731,7 +1731,7 @@ void MainWindow::Window::slotThumbnailSizeChanged()
     QPixmapCache::clear();
 
     QString thumbnailSizeMsg = i18nc("@info:status",
-                                     //xgettext:no-c-format
+                                     // xgettext:no-c-format
                                      "Thumbnail width: %1px (storage size: %2px)",
                                      Settings::SettingsData::instance()->actualThumbnailSize(),
                                      Settings::SettingsData::instance()->thumbnailSize());

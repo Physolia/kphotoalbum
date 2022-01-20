@@ -82,7 +82,7 @@ int main(int argc, char **argv)
     migrateKDE4Config();
 
     KAboutData aboutData(
-        QStringLiteral("kphotoalbum"), //component name
+        QStringLiteral("kphotoalbum"), // component name
         i18n("KPhotoAlbum"), // display name
         QStringLiteral(KPA_VERSION),
         i18n("KDE Photo Album"), // short description
@@ -149,14 +149,22 @@ int main(int argc, char **argv)
         return retVal;
     }
 
-    const auto mainWindowGeometry = Settings::SettingsData::instance()->windowGeometry(Settings::MainWindow);
-    if (mainWindowGeometry.isValid())
-        view->setGeometry(mainWindowGeometry);
+#ifdef KPA_ENABLE_REMOTECONTROL
+    if (MainWindow::Options::the()->hideInitialWindow())
+        view->showMinimized();
     else
-        view->showMaximized();
+#endif
+    {
+        const auto mainWindowGeometry = Settings::SettingsData::instance()->windowGeometry(Settings::MainWindow);
+        if (mainWindowGeometry.isValid())
+            view->setGeometry(mainWindowGeometry);
+        else
+            view->showMaximized();
+    }
 
 #ifdef KPA_ENABLE_REMOTECONTROL
     (void)RemoteControl::RemoteInterface::instance();
+//    RemoteControl::RemoteInterface::instance().listen(QHostAddress::Any);
 #endif
 
     int code = QApplication::exec();
