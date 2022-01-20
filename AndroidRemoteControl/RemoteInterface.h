@@ -94,6 +94,7 @@ public:
     QString networkAddress() const;
 
     QStringList tokens() const;
+    QImage m_homeImage;
 
 private slots:
     void requestInitialData();
@@ -113,7 +114,6 @@ private:
 
     Client *m_connection = nullptr;
     CategoryModel *m_categories;
-    QImage m_homeImage;
     QImage m_kphotoalbumImage;
     SearchInfo m_search;
     ThumbnailModel *m_categoryItems;
