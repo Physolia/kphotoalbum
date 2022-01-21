@@ -4,8 +4,8 @@
 */
 
 #include "DiscoveryModel.h"
+#include "../RemoteControl/Types.h"
 #include "Action.h"
-#include "Types.h"
 
 namespace RemoteControl
 {

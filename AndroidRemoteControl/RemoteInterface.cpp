@@ -5,11 +5,11 @@
 
 #include "RemoteInterface.h"
 
+#include "../RemoteControl/RemoteCommand.h"
 #include "Action.h"
 #include "Client.h"
 #include "ImageDetails.h"
 #include "ImageStore.h"
-#include "RemoteCommand.h"
 #include "ScreenInfo.h"
 #include "Settings.h"
 

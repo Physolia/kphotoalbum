@@ -5,7 +5,7 @@
 
 #include "Client.h"
 
-#include "RemoteCommand.h"
+#include "../RemoteControl/RemoteCommand.h"
 #include <QTcpSocket>
 #include <QUdpSocket>
 
