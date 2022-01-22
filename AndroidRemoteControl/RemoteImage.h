@@ -33,7 +33,7 @@ public slots:
     void loadFullSize();
 
 protected:
-    void componentComplete();
+    void componentComplete() override;
 
 private slots:
     void requestImage();
