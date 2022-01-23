@@ -4,6 +4,7 @@
 */
 
 #include "RemoteInterface.h"
+#include "ImageProvider.h"
 
 #include "../RemoteControl/RemoteCommand.h"
 #include "Action.h"
@@ -81,6 +82,10 @@ void RemoteInterface::setHomePageImages(const StaticImageResult &command)
 
     m_discoveryImage = command.discoverIcon;
     emit discoveryImageChanged();
+
+    ImageProvider::instance().m_info = command.info;
+    ImageProvider::instance().m_slideShow = command.slideShow;
+    ImageProvider::instance().m_search = command.discoverIcon;
 }
 
 RemoteInterface &RemoteInterface::instance()

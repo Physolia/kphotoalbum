@@ -18,6 +18,7 @@ class ImageDetails : public QObject
     Q_PROPERTY(QString date MEMBER m_date NOTIFY updated)
     Q_PROPERTY(QString description MEMBER m_description NOTIFY updated)
     Q_PROPERTY(QStringList categories READ categories NOTIFY updated)
+    Q_PROPERTY(bool visible MEMBER m_visible NOTIFY visibleChanged)
 
     // This is just a dummy property to ensure that categories are updated too when changed.
     Q_PROPERTY(QString dummy READ dummy NOTIFY updated)
@@ -35,9 +36,11 @@ public slots:
 
 signals:
     void updated();
+    void visibleChanged();
 
 private:
     ImageDetails() = default;
+    bool m_visible = false;
     QString m_fileName;
     QString m_date;
     QString m_description;
