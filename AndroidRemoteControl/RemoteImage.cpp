@@ -4,6 +4,7 @@
 */
 
 #include "RemoteImage.h"
+#include "ImageProvider.h"
 #include "ImageStore.h"
 #include "RemoteInterface.h"
 #include "ScreenInfo.h"
@@ -83,7 +84,7 @@ void RemoteImage::requestImage()
         return;
 
     if (m_imageId == DISCOVERYID)
-        m_image = RemoteInterface::instance().discoveryImage().scaled(size(), Qt::KeepAspectRatio);
+        m_image = ImageProvider::instance().discoverIcon().scaled(size(), Qt::KeepAspectRatio);
     else {
         m_image = {};
         ImageStore::instance().requestImage(this, m_imageId, size(), m_type);
