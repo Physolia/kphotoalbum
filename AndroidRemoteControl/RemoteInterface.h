@@ -65,6 +65,7 @@ public slots:
     void removeToken(int imageId, const QString &token);
     void rerequestOverviewPageData();
     void pushAwayFromStartupState();
+    void jumpToContext(int imageId);
 
 signals:
     void connectionChanged();
@@ -86,6 +87,7 @@ public:
     QString networkAddress() const;
 
     QStringList tokens() const;
+    ThumbnailModel *activeThumbnailModel();
 
 private slots:
     void requestInitialData();
