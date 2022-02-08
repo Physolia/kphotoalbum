@@ -48,6 +48,8 @@ RemoteInterface::RemoteInterface(QObject *parent)
     connect(m_connection, &Server::connected, this, &RemoteInterface::connected);
     connect(m_connection, &Server::disConnected, this, &RemoteInterface::disConnected);
     connect(m_connection, &Server::stoppedListening, this, &RemoteInterface::stoppedListening);
+
+    connect(this, &RemoteInterface::connected, this, &RemoteInterface::sendInitialDateMap);
 }
 
 DB::ImageSearchInfo RemoteInterface::convert(const SearchInfo &searchInfo) const
@@ -258,4 +260,17 @@ void RemoteInterface::setToken(const ToggleTokenRequest &command)
     else
         info->removeCategoryInfo(tokensCategory->name(), command.token);
     MainWindow::DirtyIndicator::markDirty();
+}
+
+void RemoteInterface::sendInitialDateMap()
+{
+    const DB::ImageInfoList images = DB::ImageDB::instance()->images();
+    QHash<int, QDate> result;
+    result.reserve(images.count());
+    for (auto image : images) {
+        const int imageID = m_imageNameStore[image->fileName()];
+        const QDate date = image->date().start().date();
+        result.insert(imageID, date);
+    }
+    m_connection->sendCommand(ImageDateResult(result));
 }

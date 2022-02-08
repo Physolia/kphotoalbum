@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Jesper K. Pedersen <blackie@kde.org>
+/* SPDX-FileCopyrightText: 2014-2022 Jesper K. Pedersen <blackie@kde.org>
 
    SPDX-License-Identifier: GPL-2.0-or-later
 */
@@ -52,11 +52,18 @@ void RemoteImage::setImage(const QImage &image)
     update();
 }
 
+void RemoteImage::setDate(const QDate &date)
+{
+    m_date = date;
+    emit dateChanged();
+}
+
 void RemoteImage::setImageId(int imageId)
 {
     if (m_imageId != imageId) {
         m_imageId = imageId;
         emit imageIdChanged();
+        setDate(ImageStore::instance().date(imageId));
     }
 }
 
