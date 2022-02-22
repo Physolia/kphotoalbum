@@ -25,6 +25,7 @@
 #include <KLocalizedString>
 #include <QBuffer>
 #include <QDataStream>
+#include <QFile>
 #include <QImage>
 #include <QPainter>
 #include <QTcpSocket>
@@ -111,6 +112,8 @@ void RemoteInterface::handleCommand(const RemoteCommand &command)
         sendHomePageImages(static_cast<const StaticImageRequest &>(command));
     else if (command.commandType() == CommandType::ToggleTokenRequest)
         setToken(static_cast<const ToggleTokenRequest &>(command));
+    else if (command.commandType() == CommandType::VideoRequest)
+        sendVideo(static_cast<const VideoRequest &>(command));
 }
 
 void RemoteInterface::sendCategoryNames(const SearchRequest &search)
@@ -119,12 +122,10 @@ void RemoteInterface::sendCategoryNames(const SearchRequest &search)
 
     CategoryListResult command;
     for (const DB::CategoryPtr &category : DB::ImageDB::instance()->categoryCollection()->categories()) {
-        if (category->type() == DB::Category::MediaTypeCategory)
-            continue;
         QMap<QString, DB::CountWithRange> images = DB::ImageDB::instance()->classify(dbSearchInfo, category->name(), DB::Image);
 
         QMap<QString, DB::CountWithRange> videos = DB::ImageDB::instance()->classify(dbSearchInfo, category->name(), DB::Video);
-        const bool enabled = (images.count() /*+ videos.count()*/ > 1);
+        const bool enabled = (images.count() + videos.count() > 1);
         CategoryViewType type = (category->viewType() == DB::Category::IconView || category->viewType() == DB::Category::ThumbedIconView)
             ? Types::CategoryIconView
             : Types::CategoryListView;
@@ -166,7 +167,7 @@ void RemoteInterface::sendImageSearchResult(const SearchInfo &search, ImageId fo
                         [](const DB::FileName &file) {
                             // Only include unstacked images, and the top of stacked images.
                             // And also exclude videos
-                            return DB::ImageDB::instance()->info(file)->stackOrder() > 1 || DB::ImageDB::instance()->info(file)->isVideo();
+                            return DB::ImageDB::instance()->info(file)->stackOrder() > 1;
                         });
 
     std::transform(stacksRemoved.begin(), stacksRemoved.end(), std::back_inserter(result),
@@ -199,7 +200,7 @@ void RemoteInterface::requestThumbnail(const ThumbnailRequest &command)
             // Request for full screen image.
             size = info->size();
         }
-        RemoteImageRequest *request
+        auto *request
             = new RemoteImageRequest(fileName, size, angle, command.type, this);
 
         ImageManager::AsyncLoader::instance()->load(request);
@@ -265,12 +266,29 @@ void RemoteInterface::setToken(const ToggleTokenRequest &command)
 void RemoteInterface::sendInitialDateMap()
 {
     const DB::ImageInfoList images = DB::ImageDB::instance()->images();
-    QHash<int, QDate> result;
-    result.reserve(images.count());
+    QHash<int, QDate> imageDates;
+    imageDates.reserve(images.count());
+
+    QVector<int> videos;
+    videos.reserve(images.count());
+
     for (auto image : images) {
         const int imageID = m_imageNameStore[image->fileName()];
         const QDate date = image->date().start().date();
-        result.insert(imageID, date);
+        imageDates.insert(imageID, date);
+        if (image->isVideo())
+            videos.append(imageID);
     }
-    m_connection->sendCommand(ImageDateResult(result));
+
+    m_connection->sendCommand(ImageInfosResult(imageDates, videos));
+}
+
+void RemoteInterface::sendVideo(const VideoRequest &command)
+{
+    // FIXME: Error handling
+    const DB::FileName fileName = m_imageNameStore[command.imageId];
+    QFile file(fileName.absolute());
+    file.open(QIODevice::ReadOnly);
+
+    m_connection->sendCommand(VideoResult(command.imageId, file.readAll()));
 }
