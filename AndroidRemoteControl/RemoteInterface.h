@@ -22,7 +22,6 @@ class QTcpSocket;
 
 namespace RemoteControl
 {
-
 class Client;
 
 class RemoteInterface : public QObject
@@ -115,6 +114,7 @@ private:
     QStringList m_listCategoryValues;
     DiscoveryModel *m_discoveryModel;
     ThumbnailModel *m_activeThumbnailModel = nullptr;
+    class VideoClient *m_videoClient = nullptr;
 };
 
 }

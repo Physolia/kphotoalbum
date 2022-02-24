@@ -4,10 +4,8 @@
 */
 
 #include "RemoteConnection.h"
-
-#include "RemoteCommand.h"
-
 #include "../Utilities/EnumHelper.h"
+#include "RemoteCommand.h"
 #include <QApplication>
 #include <QBuffer>
 #include <QTcpSocket>
