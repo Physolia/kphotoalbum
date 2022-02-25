@@ -65,6 +65,7 @@ public slots:
     void rerequestOverviewPageData();
     void pushAwayFromStartupState();
     void jumpToContext(int imageId);
+    void cancelVideoRequest(ImageId imageId);
 
 signals:
     void connectionChanged();
