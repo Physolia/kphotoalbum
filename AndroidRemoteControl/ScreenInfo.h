@@ -27,7 +27,7 @@ class ScreenInfo : public QObject
 public:
     static ScreenInfo &instance();
     void setScreen(QScreen *);
-    QSize pixelForSizeInMM(int size) const;
+    Q_INVOKABLE QSize pixelForSizeInMM(int size) const;
     void setCategoryCount(int count);
     QSize screenSize() const;
     QSize viewSize() const;
