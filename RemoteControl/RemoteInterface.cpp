@@ -269,6 +269,8 @@ void RemoteInterface::setToken(const ToggleTokenRequest &command)
 void RemoteInterface::setupWhenConnected()
 {
     sendInitialDateMap();
+    if (m_videoServer)
+        m_videoServer->requestCloseDown();
     delete m_videoServer;
     m_videoServer = new VideoServer;
     m_videoServer->connectToTCPServer(m_connection->remoteAddress());
