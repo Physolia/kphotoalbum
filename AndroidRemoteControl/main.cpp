@@ -24,6 +24,7 @@ using namespace RemoteControl;
 
 #ifdef REQUEST_PERMISSIONS_ON_ANDROID
 #include <QtAndroid>
+#include <VideoStore.h>
 
 bool requestStoragePermission()
 {
@@ -83,5 +84,7 @@ int main(int argc, char *argv[])
     (void)ImageStore::instance();
 
     QGuiApplication::styleHints()->setMousePressAndHoldInterval(400);
-    return app.exec();
+    auto ret = app.exec();
+    VideoStore::purgeCache();
+    return ret;
 }
